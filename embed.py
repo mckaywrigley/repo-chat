@@ -14,8 +14,10 @@ supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # configure these to fit your needs
-exclude_dir = ['.git', 'node_modules', 'public']
-exclude_files = ['package-lock.json']
+exclude_dir = ['.git', 'node_modules', 'public', 'assets']
+exclude_files = ['package-lock.json', '.DS_Store']
+exclude_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.ico', '.svg', '.webp',
+    '.mp3', '.wav']
 
 documents = []
 
@@ -24,10 +26,12 @@ for dirpath, dirnames, filenames in os.walk('repo'):
     dirnames[:] = [d for d in dirnames if d not in exclude_dir]
     
     for file in filenames:
+        _, file_extension = os.path.splitext(file)
+
         # skip files in exclude_files
-        if file not in exclude_files:
+        if file not in exclude_files and file_extension not in exclude_extensions:
             file_path = os.path.join(dirpath, file)
-            loader = TextLoader(file_path)
+            loader = TextLoader(file_path, encoding='ISO-8859-1')
             documents.extend(loader.load())
 
 
@@ -37,7 +41,7 @@ docs = text_splitter.split_documents(documents)
 for doc in docs:
     source = doc.metadata['source']
     cleaned_source = '/'.join(source.split('/')[1:])
-    doc.page_content = "FILE NAME: " + cleaned_source + "\n###\n" + doc.page_content
+    doc.page_content = "FILE NAME: " + cleaned_source + "\n###\n" + doc.page_content.replace('\u0000', '')
 
 embeddings = OpenAIEmbeddings()
 
