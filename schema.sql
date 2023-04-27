@@ -1,3 +1,4 @@
+create extension if not exists vector with schema public;
 create table repo_chat (
        id bigserial primary key,
        content text, -- corresponds to Document.pageContent

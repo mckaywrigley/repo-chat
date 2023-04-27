@@ -3,3 +3,4 @@ python-dotenv==1.0.0
 supabase==1.0.3
 tiktoken==0.3.3
 openai
+dotenv
