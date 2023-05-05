@@ -1,3 +1,4 @@
 .env
 /repo
 .DS_Store
+/db
