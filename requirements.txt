@@ -3,4 +3,7 @@ python-dotenv==1.0.0
 supabase==1.0.3
 tiktoken==0.3.3
 openai
-dotenv
+python-dotenv
+
+# for docker environment local memory with chromadb
+chromadb

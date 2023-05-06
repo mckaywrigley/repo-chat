@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+  repo-chat:
+    build: .
+    container_name: repo-chat
+    environment:
+      - REPO_URL=
+      - REPO_BRANCH=
+      - OPENAI_API_KEY=
+      - USE_DOCKER=True
+    ports:
+      - 3000:3000

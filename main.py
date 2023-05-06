@@ -1,34 +1,45 @@
 import os
+import chromadb
+from chromadb.config import Settings
 from dotenv import load_dotenv
 from supabase.client import Client, create_client
 from langchain import LLMChain
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.prompts.chat import (
+    PromptTemplate,
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
 )
 from langchain.vectorstores import SupabaseVectorStore
+from langchain.vectorstores import Chroma
 from langchain.schema import (
     SystemMessage
 )
 from langchain.chat_models import ChatOpenAI
 from langchain.callbacks.base import CallbackManager
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.chains import RetrievalQA
 
 load_dotenv()
 
-supabase_url = os.environ.get("SUPABASE_URL")
-supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
-supabase: Client = create_client(supabase_url, supabase_key)
+if not (os.environ.get("USE_DOCKER")):
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
+    supabase: Client = create_client(supabase_url, supabase_key)
 
 embeddings = OpenAIEmbeddings()
 
-vector_store = SupabaseVectorStore(
-    supabase, 
-    embeddings, 
-    table_name=os.environ.get("TABLE_NAME"),
-    query_name="repo_chat_search"
-)
+if not (os.environ.get("USE_DOCKER")):
+    vector_store = SupabaseVectorStore(
+        supabase, 
+        embeddings, 
+        table_name=os.environ.get("TABLE_NAME"),
+        query_name="repo_chat_search"
+    )
+
+persist_directory = 'db'
+client = chromadb.Client(Settings(anonymized_telemetry=False))
+vector_store = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 
 while True:
     query = input("\033[34mWhat question do you have about your repo?\n\033[0m")
@@ -36,6 +47,7 @@ while True:
     if query.lower().strip() == "exit":
         print("\033[31mGoodbye!\n\033[0m")
         break
+
 
     matched_docs = vector_store.similarity_search(query)
     code_str = ""
@@ -73,9 +85,9 @@ while True:
     """
 
     chat = ChatOpenAI(streaming=True, callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]), verbose=True, temperature = 0.5)
-    system_message_prompt = SystemMessagePromptTemplate.from_template(template)
-    chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt])
-    chain = LLMChain(llm=chat, prompt=chat_prompt)
+    # system_message_prompt = SystemMessagePromptTemplate.from_template(template)
+    # chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt])
+    chain = RetrievalQA.from_chain_type(llm=chat, chain_type="stuff", retriever=vector_store.as_retriever())
 
     chain.run(code=code_str, query=query)
 

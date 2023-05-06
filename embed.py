@@ -1,17 +1,21 @@
 import os
+import chromadb
 from dotenv import load_dotenv
 from supabase.client import Client, create_client
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import SupabaseVectorStore
+from langchain.vectorstores import Chroma
+from chromadb.config import Settings
 from langchain.document_loaders import TextLoader
 from langchain.document_loaders import TextLoader
 
 load_dotenv()
 
-supabase_url = os.environ.get("SUPABASE_URL")
-supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
-supabase: Client = create_client(supabase_url, supabase_key)
+if not (os.environ.get("USE_DOCKER")):
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")
+    supabase: Client = create_client(supabase_url, supabase_key)
 
 # configure these to fit your needs
 exclude_dir = ['.git', 'node_modules', 'public', 'assets']
@@ -45,9 +49,16 @@ for doc in docs:
 
 embeddings = OpenAIEmbeddings()
 
-vector_store = SupabaseVectorStore.from_documents(
-    docs,
-    embeddings,
-    client=supabase,
-    table_name=os.environ.get("TABLE_NAME"),
-)
+if not (os.environ.get("USE_DOCKER")):
+    vector_store = SupabaseVectorStore.from_documents(
+        docs,
+        embeddings,
+        client=supabase,
+        table_name=os.environ.get("TABLE_NAME"),
+    )
+
+persist_directory = 'db'
+client = chromadb.Client(Settings(anonymized_telemetry=False))
+vector_store = Chroma.from_documents(documents=docs, embedding=embeddings, persist_directory=persist_directory)
+vector_store.persist()
+vector_store = None
